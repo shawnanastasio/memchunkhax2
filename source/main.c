@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
     //2 = only execute service call
     //3 = execute memchunkhax2 and service call afterwards
     //4 = execute all
-    u8 mode = 2;
+    u8 mode = 4;
     u8 success;
 
     const char* service = "am:u";
@@ -60,13 +60,28 @@ int main(int argc, char **argv) {
       testService(service);
     }
 
-    printf("Press START to exit.\n");
+    printf("Press START to reboot.\n");
+    printf("Press SELECT to (try to) exit.\n");
 
+
+    u8 debugFirst = 1;
     while(aptMainLoop()) {
-
       hidScanInput();
+
+      if (debugFirst == 1) {
+        printf("entered loop");
+        debugFirst = 0;
+      }
+
+      if(hidKeysDown() & KEY_SELECT) {
+        break;
+      }
+
       if(hidKeysDown() & KEY_START) {
-          break;
+        //Reboot console
+        aptOpenSession();
+        APT_HardwareResetAsync();
+        aptCloseSession();
       }
 
       gfxFlushBuffers();

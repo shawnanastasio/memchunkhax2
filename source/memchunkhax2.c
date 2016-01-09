@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define SLAB_HEAP_VIRT 0xFFF70000 // O3DS 9.0+, N3DS All
 
@@ -245,7 +246,7 @@ static u8 memchunkhax2_exploit() {
         goto cleanup;
     }
 
-    // Create thread to allocate pagges.
+    // Create thread to allocate pages.
     if(threadCreate(allocate_thread, data, 0x4000, 0x3F, 1, true) == NULL) {
         printf("Failed to create allocation thread.\n");
         goto cleanup;
@@ -283,8 +284,13 @@ static u8 memchunkhax2_exploit() {
 
     printf("Map complete.\n");
 
-    // Restore the kernel page backup.
-    memcpy((void*) (data->addr + PAGE_SIZE), backup, PAGE_SIZE);
+    // Restore the kernel page backup. One half at a time
+    //memcpy((void*) (data->addr + PAGE_SIZE), backup, PAGE_SIZE);
+    usleep(1000000);
+    printf("Starting to restore kernel memory.\n");
+    memcpy((void*) (data->addr + (PAGE_SIZE)), backup, PAGE_SIZE / 2);
+    printf("Restored half of kernel memory\n");
+    memcpy((void*) (data->addr + (PAGE_SIZE + (PAGE_SIZE / 2))), backup + (PAGE_SIZE / 2), (PAGE_SIZE / 2));
 
     printf("Restored kernel memory.\n");
 
